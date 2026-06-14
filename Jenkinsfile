@@ -24,6 +24,11 @@
 pipeline {
   agent any
 
+  // Homebrew tools (node, npm) live outside Jenkins' default PATH on macOS
+  environment {
+    PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  }
+
   // ── Options ──────────────────────────────────────────────────────────────
   options {
     timeout(time: 15, unit: 'MINUTES')
