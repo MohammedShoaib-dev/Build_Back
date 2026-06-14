@@ -1,0 +1,20 @@
+{
+  "name": "buildback",
+  "version": "1.0.0",
+  "description": "Time Travel Debugger for GitHub Repositories",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "simple-git": "^3.19.1",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}

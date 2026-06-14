@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BuildBack — Time Travel Debugger</title>
+  <meta name="description" content="BuildBack lets you clone any GitHub repo, step through its commit history, and run a Docker build against any snapshot — with live streaming logs and a full build history dashboard." />
+
+  <!-- Fonts: JetBrains Mono for terminals, Inter for UI text -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════ HEADER ══════════════════════════════════ -->
+  <header id="site-header">
+    <div class="header-logo">
+      <span class="logo-glyph" aria-hidden="true">◈</span>
+      <span class="logo-text">Build<span class="logo-accent">Back</span></span>
+    </div>
+
+    <div class="header-center">
+      <span class="header-tagline">Time Travel Debugger for GitHub Repos</span>
+    </div>
+
+    <div class="header-right">
+      <span id="mode-badge" class="mode-badge" title="Toggle MOCK_MODE in .env">
+        <span class="mode-dot"></span>
+        <span id="mode-label">Detecting…</span>
+      </span>
+    </div>
+  </header>
+
+  <!-- ═════════════════════════════ MAIN CONTENT ══════════════════════════════ -->
+  <main id="main-content">
+
+    <!-- ── Section 1: Clone Panel ─────────────────────────────────────────── -->
+    <section id="clone-section" class="panel" aria-label="Clone repository">
+      <div class="panel-header">
+        <span class="panel-icon" aria-hidden="true">⬡</span>
+        <h1 class="panel-title">Clone Repository</h1>
+      </div>
+      <p class="panel-subtitle">Paste a public GitHub URL to load its commit history.</p>
+
+      <div class="input-row">
+        <div class="input-wrapper">
+          <span class="input-prefix" aria-hidden="true">$</span>
+          <input
+            id="repo-url-input"
+            type="url"
+            list="repo-suggestions"
+            placeholder="https://github.com/user/repo"
+            autocomplete="off"
+            spellcheck="false"
+            aria-label="GitHub repository URL"
+          />
+        </div>
+        <button id="clone-btn" class="btn btn-primary" aria-live="polite">
+          <span id="clone-btn-text">Clone</span>
+          <span id="clone-spinner" class="spinner hidden" aria-hidden="true"></span>
+        </button>
+      </div>
+
+      <datalist id="repo-suggestions">
+        <option value="https://github.com/octocat/Hello-World"/>
+        <option value="https://github.com/expressjs/express"/>
+        <option value="https://github.com/axios/axios"/>
+        <option value="https://github.com/sindresorhus/got"/>
+        <option value="https://github.com/vercel/next.js"/>
+        <option value="https://github.com/facebook/react"/>
+      </datalist>
+
+      <div id="clone-status" class="status-message" role="status" aria-live="polite"></div>
+
+      <!-- Demo hint -->
+      <p class="demo-hint">
+        Try a demo:
+        <button id="demo-fill-btn" class="link-btn" aria-label="Fill demo repo URL"
+          title="Click to cycle through demo repos">
+          cycle demo repos ↺
+        </button>
+        &nbsp;·&nbsp; octocat/Hello-World, expressjs/express, axios/axios…
+      </p>
+    </section>
+
+    <!-- ── Section 2: Commit History ─────────────────────────────────────── -->
+    <section id="commits-section" class="panel hidden" aria-label="Commit history">
+      <div class="panel-header">
+        <span class="panel-icon" aria-hidden="true">⏱</span>
+        <h2 class="panel-title">Commit History</h2>
+        <span id="repo-name-chip" class="chip"></span>
+        <span id="commit-count-chip" class="chip chip-dim"></span>
+      </div>
+
+      <div class="table-scroll" role="region" aria-label="Commits table">
+        <table id="commits-table" aria-label="Commit history">
+          <thead>
+            <tr>
+              <th scope="col">Hash</th>
+              <th scope="col">Message</th>
+              <th scope="col">Author</th>
+              <th scope="col">Date</th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody id="commits-tbody">
+            <!-- Populated by app.js -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Section 3: Live Build Logs ─────────────────────────────────────── -->
+    <section id="logs-section" class="panel hidden" aria-label="Live build logs">
+      <div class="panel-header">
+        <span class="panel-icon" aria-hidden="true">▶</span>
+        <h2 class="panel-title">Build Logs</h2>
+        <span id="active-status-badge" class="status-badge status-running" role="status">
+          <span class="pulse-dot"></span> RUNNING
+        </span>
+      </div>
+
+      <!-- Build metadata bar -->
+      <div id="build-meta" class="build-meta-bar">
+        <span id="meta-commit" class="meta-item"></span>
+        <span id="meta-duration" class="meta-item"></span>
+        <span id="meta-mock" class="meta-item"></span>
+      </div>
+
+      <!-- Terminal log viewer -->
+      <div class="terminal-wrapper">
+        <div class="terminal-bar">
+          <span class="terminal-dot dot-red"></span>
+          <span class="terminal-dot dot-yellow"></span>
+          <span class="terminal-dot dot-green"></span>
+          <span class="terminal-title" id="terminal-title">build output</span>
+        </div>
+        <pre id="log-output" class="log-output" aria-live="polite" aria-label="Build log output"></pre>
+      </div>
+    </section>
+
+    <!-- ── Section 3b: Deployed Preview ─────────────────────────────────── -->
+    <section id="preview-section" class="panel hidden" aria-label="Deployed app preview">
+      <div class="panel-header">
+        <span class="panel-icon" aria-hidden="true">🚀</span>
+        <h2 class="panel-title">Deployed Preview</h2>
+        <span id="preview-status-chip" class="chip">● live</span>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button id="preview-open-btn" class="btn btn-ghost btn-sm" title="Open in new tab">↗ Open</button>
+          <button id="preview-close-btn" class="btn btn-ghost btn-sm">✕ Close</button>
+        </div>
+      </div>
+
+      <!-- macOS-style browser chrome wrapping the preview iframe -->
+      <div class="preview-browser">
+        <div class="browser-chrome">
+          <div class="browser-dots">
+            <span class="b-dot b-red"></span>
+            <span class="b-dot b-yellow"></span>
+            <span class="b-dot b-green"></span>
+          </div>
+          <div class="browser-url-bar">
+            <span class="url-lock" aria-hidden="true">🔒</span>
+            <span id="preview-url-text" class="url-text">localhost:3000</span>
+          </div>
+          <div class="browser-actions">
+            <button id="preview-reload-btn" class="browser-reload" title="Reload preview" aria-label="Reload preview">↺</button>
+          </div>
+        </div>
+        <iframe
+          id="preview-iframe"
+          class="preview-iframe"
+          title="Deployed app preview"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+          src="about:blank"
+        ></iframe>
+      </div>
+    </section>
+
+    <!-- ── Section 4: Build History Dashboard ─────────────────────────────── -->
+    <section id="history-section" class="panel" aria-label="Build history dashboard">
+      <div class="panel-header">
+        <span class="panel-icon" aria-hidden="true">◎</span>
+        <h2 class="panel-title">Build History</h2>
+        <button id="refresh-history-btn" class="btn btn-ghost btn-sm" aria-label="Refresh build history">
+          ↻ Refresh
+        </button>
+      </div>
+
+      <div id="history-content" role="region" aria-live="polite">
+        <p class="empty-state">No builds yet — clone a repo and trigger your first build.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══════════════════════════════ FOOTER ══════════════════════════════════ -->
+  <footer id="site-footer">
+    <span>BuildBack v1.0</span>
+    <span class="footer-sep">·</span>
+    <span>Time Travel Debugger for GitHub Repos</span>
+    <span class="footer-sep">·</span>
+    <span>Runs fully locally · No cloud · No Firebase</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+node_modules/
+backend/repos/
+backend/builds.json
+.env
